@@ -1,7 +1,7 @@
 import unittest
 import work_log_2
 
-TEST_MOCK_INPUT = [' ', ' ']
+TEST_MOCK_INPUT = ['', '']
 
 
 # this should always be the first test run
@@ -14,8 +14,13 @@ class Test_A_database(unittest.TestCase):
         self.assertTrue(work_log_2.initialize())
 
 
+# should always be the second test run
 class Test_A_tabla_rasa(unittest.TestCase):
-    # should always be the second test run
+
+    def test_tabla_rasa(self):
+        clean_up_orphan_entries()
+        self.assertEquals(work_log_2.load_tasks().count(), 0)
+
     def test_main_menu_tabla_rasa(self):
         work_log_2.TEST_MOCK_INPUT = ['x', '']
         work_log_2.main_menu()
@@ -45,14 +50,58 @@ class Test_entryMethods(unittest.TestCase):
 
 
 class Test_C_mockInputs(unittest.TestCase):
-    def test_create_edit_print_entry_delete_task(self):
+    def test_entry_menu_blank(self):
+        work_log_2.TEST_MOCK_INPUT = ['']
+        work_log_2.entry_menu(
+            str(work_log_2.Entry.get().id),
+        )
+
+    def test_entry_menu_next(self):
+        work_log_2.TEST_MOCK_INPUT = [
+            'n',
+            '',
+            '',
+            '',
+            ]
+        work_log_2.entry_menu(
+            str(work_log_2.Entry.get().id),
+        )
+
+    def test_entry_menu_invalid(self):
+        work_log_2.TEST_MOCK_INPUT = [
+            'x',
+            '',
+            '',
+            '',
+            ]
+        work_log_2.entry_menu(
+            str(work_log_2.Entry.get().id),
+        )
+
+    def test_entry_menu_prev(self):
+        work_log_2.TEST_MOCK_INPUT = [
+            'p',
+            '',
+            '',
+            '']
+        work_log_2.entry_menu(
+            str(work_log_2.Entry.get().id),
+        )
+
+    def test_show_query_results_blank(self):
+        work_log_2.show_query_results('', '')
+
+    def test_get_query_results_blank(self):
+        work_log_2.results_menu('')
+
+    def test_create_edit_print_entry_task(self):
         # set mock inputs for CREATE test, invalid then valid
         work_log_2.TEST_MOCK_INPUT = [
             '', 'PYTHON UNITTEST',
             '', 'TESTING NEW TASK',
             '12/15', '13/12/2018',
             "one", '111',
-            '', '', ''
+            '',
         ]
         work_log_2.new_task()
         # get the newly created entry
@@ -142,6 +191,12 @@ class Test_entryInstance(unittest.TestCase):
 
 
 class Test_E_menus(unittest.TestCase):
+    def test_entry_menu(self):
+        work_log_2.TEST_MOCK_INPUT = [
+            ''
+        ]
+        work_log_2.entry_menu('2')
+
     def test_m_main_menu_invalid_entry(self):
         # TODO: testing the menu - only enter valid data
         # data validation is tested elsewhere (test_mockInputs)
@@ -175,6 +230,9 @@ class Test_E_menus(unittest.TestCase):
             'l',
             'a',
             '',
+            '',
+            '',
+            'q',
             '',
         ]
         work_log_2.main_menu()
@@ -221,6 +279,16 @@ class Test_E_menus(unittest.TestCase):
         ]
         work_log_2.lookup_menu()
 
+    def test_lookup_menu_by_employee_name(self):
+        work_log_2.TEST_MOCK_INPUT = [
+            # lookup task
+            'm',
+            'TEST',
+            '',
+            '',
+        ]
+        work_log_2.lookup_menu()
+
     def test_lookup_menu_by_date(self):
         work_log_2.TEST_MOCK_INPUT = [
             # lookup task
@@ -261,8 +329,7 @@ class Test_E_menus(unittest.TestCase):
             # lookup task
             'a',
             str(work_log_2.Entry.get().id),
-            '1',
-            ' ',
+            '',
             '',
         ]
         work_log_2.lookup_menu()
@@ -287,7 +354,6 @@ class Test_E_menus(unittest.TestCase):
             '',
             '',
             '',
-            '',
         ]
         work_log_2.lookup_menu()
 
@@ -307,6 +373,7 @@ class Test_E_menus(unittest.TestCase):
             '777',
             'seven',
             '',
+            '',
             ''
         ]
         work_log_2.lookup_menu()
@@ -317,6 +384,7 @@ class Test_E_menus(unittest.TestCase):
             'a',
             str(work_log_2.Entry.get().id),
             'd',
+            '',
             ''
         ]
         work_log_2.lookup_menu()
@@ -331,10 +399,14 @@ class Test_E_menus(unittest.TestCase):
 
 
 class test_ZZZ_clean_up_orphan_entries(unittest.TestCase):
-    def clean_up_orphan_entries(self):
-        for Entry in work_log_2.load_tasks():
-            work_log_2.TEST_MOCK_INPUT.append('')
-            work_log_2.delete_task(Entry.id)
+    def test_clean_up_orphan_entries(self):
+        clean_up_orphan_entries()
+
+
+def clean_up_orphan_entries():
+    for entry in work_log_2.load_tasks():
+        work_log_2.TEST_MOCK_INPUT.append('')
+        entry.delete_task()
 
 
 if __name__ == '__main__':  # pragma: no cover
