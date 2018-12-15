@@ -5,39 +5,21 @@ by Maxwell Hunter
 follow me on GitHub @mHunterAK
 --------------------------------
 """
-from peewee import (
-                    Model, SqliteDatabase,
+from peewee import (Model, SqliteDatabase,
                     DateField, DateTimeField, TextField, IntegerField
-                    )
+                    )  # pragma: no cover
 import datetime
 import os
 import re
 
 '''
-As a user of the script, I should be able to choose whether to add a new entry
-or lookup previous entries.
-As a user of the script, if I choose to enter a new work log, I should be able
-to provide my name, a task name, a number of minutes spent working on it, and
-any additional notes I want to record.
-As a user of the script, if I choose to find a previous entry, I should be
-presented with four options: find by employee, find by date, find by time
-spent, find by search term.
-As a user of the script, if finding by employee, I should be presented with a
-list of employees with entries and be able to choose one to see entries from.
-As a user of the script, if finding by employee, I should be allowed to enter
-employee name and then be presented with entries with that employee as their
-creator.
-As a user of the script, if finding by date, I should be presented with a list
-of dates with entries and be able to choose one to see entries from.
-As a user of the script, if finding by time spent, I should be allowed to
-enter the amount of time spent on the project and then be presented with
-entries containing that amount of time spent. As a user of the script, if
-finding by a search term, I should be allowed to
-enter a string and then be presented with entries containing that string in
-the task name or notes.
-
-As a fellow developer, I should find at least 50% of the code covered by tests.
-I would use coverage.py to validate this amount of coverage.
+Instructions:
+Create a command line application that will allow employees to enter
+their name, time worked, task worked on, and general notes about the
+task into a database. There should be a way to add a new entry,
+list all entries for a particular employee, and list all entries that match
+a date or search term. Print a report of this information to the screen,
+including the date, title of task, time spent, employee, and general notes.
 '''
 
 if __name__ == "__main__":  # pragma: no cover
@@ -45,8 +27,8 @@ if __name__ == "__main__":  # pragma: no cover
 else:
     DATABASE = SqliteDatabase('TESTING_web_log_2.db')
 
-
-TEST_MOCK_INPUT = [' ', ' ']
+# variable for mocking user input by tests.py
+TEST_MOCK_INPUT = []
 
 
 # function for clearing the terminal console
@@ -54,17 +36,27 @@ def clear_screen():
     os.system("clear")
 
 
-# if the script is running tests,
-# get next command from the test script
-# otherwise, get the input from the user
+# function for mocking user input
 def test_or_input(input_prompt):
-    if __name__ == "__main__":  # pragma: no cover
+    # if the script is running as __main__,
+    if __name__ == "__main__":  # pragma: no cover - tested manually
+        # get the input from the user
         return input(input_prompt)
+    # if the script is running tests,
     else:
         try:
+            # get next command from the test mock input list
             return TEST_MOCK_INPUT.pop(0)
+        # if the input list is empty,
         except IndexError:
-            raise EnnuiError('Looked for work to do, but none was found.')
+            # raise Ennui Error
+            raise EnnuiError('Looked for work to do, but nothing was found.')
+
+
+# ERRORS
+class EnnuiError(Exception):
+    def __init__(self, value):
+        self.value = value
 
 
 # MODELS
@@ -119,7 +111,9 @@ class Entry(Model):
                 int(d_list[0]),
                 )
 
+    # subclass for data validation
     class validate():
+        # function for validating user input: dates
         def validate_date(date):
             try:
                 # split date into a list for day, month, and year
@@ -148,8 +142,8 @@ class Entry(Model):
             return len(name) > 0
 
     # print the entry preview
-    # on one line, for query results
     def print_entry(self):
+        # on one line, for query results
         print('{}.) {} ({}) by {} - {} minutes'.format(
             self.id,
             self.task_name,
@@ -161,8 +155,8 @@ class Entry(Model):
         return True
 
     # print the entry details
-    # on many lines, for query details
     def print_entry_details(self):
+        # on many lines, for query details
         print("{}.) {} by {}".format(
             self.id,
             self.task_name,
@@ -170,98 +164,21 @@ class Entry(Model):
             )
         )
         print('''Last updated:
-{}'''.format(
-            self.timestamp
-            )
+{}'''.format(self.timestamp)
         )
-        print('Task Date: {}'.format(
-            self.date
-            )
-        )
-        print('{} minutes spent'.format(
-            self.time
-            )
-        )
-        print('notes: {}'.format(
-            self.notes
-            )
-        )
+        print('Task Date: {}'.format(self.date))
+        print('{} minutes spent'.format(self.time))
+        print('notes: {}'.format(self.notes))
         return True
 
+    # self destruct sequence
     def delete_task(self):
         self.delete_instance()
 
+    # database info
     class Meta:
         database = DATABASE
         order_by = ('-id', )
-
-
-# function for performing search and showing the results
-def show_query_results(query_type, query_selection):
-    # if query is blank
-    if query_selection == "":
-        # return blank
-        return ""
-
-    # for showing all entries
-    if query_type == 'all':
-        entries = Entry.select().order_by(Entry.date)
-
-    if query_type == 'date':
-        # split query into start and end dates
-        dates = query_selection.split("||")
-        # remove trailing list item
-        del dates[-1]
-        start_date = Entry.standardize.set_date(dates[0])
-        end_date = Entry.standardize.set_date(dates[1])
-        entries = Entry.select().where(
-            Entry.date_as_datetime > start_date and
-            Entry.date_as_datetime < end_date
-        )
-
-    # for showing by time spent
-    elif query_type == 'time':
-        entries = Entry.select().where(Entry.time == int(query_selection))
-
-    # for searching entry name and notes
-    elif query_type == 'exact':
-        entries = Entry.select().where(
-            Entry.task_name.contains(query_selection) or
-            Entry.notes.contains(query_selection)
-            )
-
-    # for searching by regex
-    elif query_type == 'pattern':
-        entries = Entry.select()
-        regex_match = []
-        for entry in entries:
-            if re.match(query_selection, entry.task_name):
-                regex_match.append(entry)
-            elif re.match(query_selection, entry.notes):
-                regex_match.append(entry)
-        entries = regex_match
-
-    # print search results
-    for entry in entries:
-        entry.print_entry()
-
-    # if query returned results,
-    if len(entries) > 0:
-        # ask for an id to view details
-        select_by_id = test_or_input('Select entry by id to view details > ')
-        # return the selected id
-        if select_by_id.isdigit():
-            return select_by_id
-        elif select_by_id == '':
-            return ""
-        else:
-            clear_screen()
-            test_or_input("Invalid Selection. ")
-            return ""
-    # if query returned no results,
-    else:
-        test_or_input('No Search Results found.')
-        return ""
 
 
 # TASK CRUD: create task
@@ -322,6 +239,7 @@ def load_tasks():
     return Entry.select()
 
 
+# TASK CRUD: update task
 def edit_task(select_by_id):
     clear_screen()
     model_entry = Entry.get(Entry.id == select_by_id)
@@ -389,7 +307,7 @@ def main_menu():
         print("{} tasks available. ".format(number_of_tasks))
     print("[N]ew Entry")
     if number_of_tasks:
-        print("[L]ookup previous entry")
+        print("[L]ookup existing entry")
     print("[Q]uit")
     print()
     print("At any time, enter blank input to go back one menu level")
@@ -398,12 +316,12 @@ def main_menu():
     # As a user of the script,
     if menu_selection not in ['n', 'l', 'q']:
         clear_screen()
-        test_or_input("invalid selection.")
+        test_or_input("invalid selection 2.")
     # if I choose to enter a new work log,
     elif menu_selection.lower() == 'n':
         if new_task():
             print('New Task Created!')
-    # As a user of the script, if I choose to find a previous entry,
+    # As a user of the script, if I choose to find a existing entry,
     if menu_selection.lower() == 'l':
         # one menu deeper
         lookup_menu()
@@ -416,21 +334,8 @@ def main_menu():
 # submenu under main_menu
 # menu alpha - layer 1
 def lookup_menu():
-    # TODO: As a user of the script, if I choose to find a previous entry,
-    # I should be presented with four options:
-
-        # TODO find by employee,
-            # As a user of the script, if finding by employee,
-            # I should be presented with a list of employees with entries
-            # and be able to choose one to see entries from.
-
-            # As a user of the script, if finding by employee,
-            # I should be allowed to enter employee name and then be
-            # presented with entries with that employee as their creator.
-
     while True:
         entries = load_tasks()
-        query_selection = ""
         clear_screen()
         print("--------")
         print("LOOKUP MENU")
@@ -461,15 +366,20 @@ def lookup_menu():
         # back to main menu
         menu_selection = test_or_input("Enter your selection now > ")
         clear_screen()
+        if menu_selection in ['', ' ']:
+            break
+        results_menu(menu_selection)
 
+
+def results_menu(menu_selection):
         # return to the previous menu
         if menu_selection == '':
-            break
+            return False
 
         if menu_selection not in ['a', 'd', 'e', 'm', 'p', 't', ]:
-            test_or_input("invalid selection.")
-            # start loop over
-            continue
+            test_or_input("invalid selection 3. ")
+            # back one menu
+            return False
 
         elif menu_selection[0].lower() == 'a':
             select_by_id = show_query_results(
@@ -510,6 +420,13 @@ def lookup_menu():
             select_by_id = show_query_results(
                 'date', query_selection)
 
+        elif menu_selection[0].lower() == 'm':
+            # ask for time spent
+            query_selection = test_or_input(
+                "Enter the Employee name query > ")
+            select_by_id = show_query_results(
+                'employee', query_selection)
+
         elif menu_selection[0].lower() == 't':
             # ask for time spent
             query_selection = test_or_input(
@@ -531,46 +448,173 @@ def lookup_menu():
             select_by_id = show_query_results(
                 'pattern', query_selection)
 
-        if not select_by_id.isdigit():
-            # if an number is not provided, start loop over
-            continue
-        # TODO: separate this out into separate entry_menu (entry or entry.id)
-        # if id is not blank
-        if select_by_id != "":
+        if not select_by_id.isdigit() and select_by_id not in ['n', 'p']:
+            # if an number or next/previous is not provided, restart loop
+            return False
+
+        entry_menu(select_by_id)
+
+
+# function for performing search and showing the results
+# arguably, this could be it's own submenu - but for UX reasons,
+# we don't want people stuck in a loop for it.
+def show_query_results(query_type, query_selection):
+    # if query is blank
+    if query_selection == "":
+        # return blank
+        return ""
+
+    # for showing all entries
+    if query_type == 'all':
+        # all entries sorted by date
+        entries = Entry.select().order_by(Entry.date)
+
+    if query_type == 'date':
+        # split query into start and end dates
+        dates = query_selection.split("||")
+        # remove trailing list item, the extra pipes (||)
+        del dates[-1]
+        # separate start and end dates
+        start_date = Entry.standardize.set_date(dates[0])
+        end_date = Entry.standardize.set_date(dates[1])
+        # query database
+        entries = Entry.select().where(
+            Entry.date_as_datetime > start_date and
+            Entry.date_as_datetime < end_date
+        )
+
+    # for searching employee name
+    elif query_type == 'employee':
+        # query database
+        entries = Entry.select().where(
+            Entry.user_name.contains(query_selection)
+            )
+
+    # for showing by time spent
+    elif query_type == 'time':
+        # query database
+        entries = Entry.select().where(Entry.time == int(query_selection))
+
+    # for searching entry name and notes
+    elif query_type == 'exact':
+        # query database
+        entries = Entry.select().where(
+            Entry.task_name.contains(query_selection) or
+            Entry.notes.contains(query_selection)
+            )
+
+    # for searching by regex
+    elif query_type == 'pattern':
+        # query database
+        entries = Entry.select()
+        # I don't like peewee's regex search options,
+        # so it's being handled at a higher level
+        regex_match = []
+        for entry in entries:
+            if re.match(query_selection, entry.task_name):
+                regex_match.append(entry)
+            elif re.match(query_selection, entry.notes):
+                regex_match.append(entry)
+        entries = regex_match
+
+    # print search results
+    for entry in entries:
+        entry.print_entry()
+
+    # if query returned results,
+    if len(entries) > 0:
+        # ask for an id to view details
+        select_by_id = test_or_input('Select entry by id to view details > ')
+        # return the selected id
+        if select_by_id.isdigit():
+            return select_by_id
+        elif select_by_id == '':
+            return ""
+        else:
+            clear_screen()
+            test_or_input("Invalid Selection 1. ")
+            return ""
+    # if query returned no results,
+    else:
+        test_or_input('No Search Results found.')
+        return ""
+
+
+# submenu under lookup_menu
+# menu  - layer 4
+def entry_menu(select_by_id):
+    # loop menu until return to previous menu with break
+    while True:
+        # if input variable is not blank
+        if select_by_id is not "":
             clear_screen()
             try:
-                # get entry from id
+                # load entry from id
                 entry = Entry.get(Entry.id == select_by_id)
+            # if no entry is found,
             except Entry.DoesNotExist:
-                test_or_input("Invalid task id.")
-                continue
-            # show detailed entry information
-            entry.print_entry_details()
-
-            # controller: if they want to edit or delete
-            edit_delete_input = test_or_input(
-                'Would you like to [E]dit or [D]elete this post? > ')
-            # if so, show edit or delete screen
-            if edit_delete_input.lower() == 'd':
-                Entry.get(select_by_id).delete_task()
+                # alert user
+                test_or_input("Couldn't find that task {}.".format(
+                    select_by_id))
+                # return to previous menu
                 break
-            elif edit_delete_input.lower() == 'e':
-                edit_task(select_by_id)
-                break
-            # up one menu
-            elif edit_delete_input == "":
-                continue
             else:
-                clear_screen()
-                test_or_input('Invalid Selection. ')
-            # refresh query_selection for next loop
-            query_selection = ''
+                # show detailed entry information
+                entry.print_entry_details()
+            # controller: if they want next or previous, or to edit or delete
+            print("Enter [N]ext or [P]revious entry")
+            edit_delete_input = test_or_input(
+                'Or, would you like to [E]dit or [D]elete this post? > ')
+            # if no selection is made,
+            if edit_delete_input.lower() == '':
+                break
+
+            # if delete is selected,
+            if edit_delete_input.lower() == 'd':
+                # delete entry
+                Entry.get(select_by_id).delete_task()
+                # return to previous menu
+                break
+
+            elif edit_delete_input.lower() == 'e':
+                # edit entry
+                edit_task(select_by_id)
+                # return to previous menu
+                break
+            if edit_delete_input.lower() == 'n':
+                # show next entry, by date
+                newer_entries = Entry.select(
+                    Entry.date_as_datetime > (
+                        entry.date_as_datetime
+                        )
+                    ).order_by(
+                    Entry.date_as_datetime)
+                for entry in newer_entries:
+                    select_by_id = entry.id
+                    break
+            elif edit_delete_input.lower() == 'p':
+                # show previous entry, by date
+                newer_entries = Entry.select(
+                    Entry.date_as_datetime < (
+                        entry.date_as_datetime)
+                    ).order_by(
+                    -Entry.date_as_datetime)
+                for entry in newer_entries:
+                    select_by_id = entry.id
+                    break
+            entry_menu(select_by_id)
+            clear_screen()
+            test_or_input('Invalid Selection. 4')
 
 
 def initialize():
+    # open database connection
     DATABASE.connect()
+    # create tables, if they don't exist
     DATABASE.create_tables([Entry], safe=True)
+    # close database connection
     DATABASE.close()
+    # return success
     return True
 
 
@@ -578,8 +622,3 @@ if __name__ == "__main__":  # pragma: no cover
     initialize()
     while True:
         main_menu()
-
-
-class EnnuiError(Exception):
-    def __init__(self, value):
-        self.value = value
